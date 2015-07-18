@@ -1,0 +1,100 @@
+<?php
+
+function ellie_panels_editor_menu() 
+{
+    $items['tester'] = array(
+      'page callback' => 'test_me',
+      'access arguments' => array('access content'),
+      'type' => MENU_NORMAL_ITEM,
+    );
+
+    return $items;
+}
+
+function test_me()
+{
+  	
+  	// The node template is managed by Page Manager as is known as a 'task';
+	$task = page_manager_get_task('site_template');
+
+	ctools_get_plugins('page_manager', 'task_handlers', 'panel_context');
+
+	// Tasks have arrays of handlers which we refer to in Panels as 'variants';
+	$handlers = page_manager_load_sorted_handlers($task);
+
+	// Register layout and style themes on behalf of all of these items.
+	ctools_include('plugins', 'panels');
+
+	$layouts = panels_get_layouts();
+
+	$defaultHandlers = variable_get('default_page_manager_handlers', false);
+
+	if($defaultHandlers)
+	{
+		foreach($defaultHandlers AS $key => $active)
+		{
+			$defaultHandlers[$key] = true;
+		}
+	}
+
+	$defaultHandlers['site_template__agency_one'] = false;
+
+	variable_set('default_page_manager_handlers', $defaultHandlers);
+
+	echo '<pre>';
+	print_r($defaultHandlers);
+	echo '</pre>';
+	die();
+	
+	/*
+	foreach ($handlers as $handler) {
+
+		$handler->disabled = 0;
+		page_manager_save_task_handler($handler);
+
+	}
+	*/
+	
+	/*
+	$output = '';
+   	foreach ($layouts as $id => $layout) 
+  	{
+  		$output .= panels_print_layout_icon($id, $layout, $layout['title']);
+  	}
+  	*/
+
+	foreach ($handlers as $handler) 
+	{
+		// Each handler/variant has an associate display in Panels which
+		// is the object we actually want to load and save.
+		$display = panels_panel_context_get_display($handler);
+
+		/*
+		$pane = panels_new_pane('page_logo', 'page_logo', TRUE);
+		$pane->panel = 'right';
+		$pane->did = $display->did;
+
+		$pane->uuid = ctools_uuid_generate();
+    	$pane->pid = 'new-' . $pane->uuid;
+
+		$display->content[$pane->pid] = $pane;
+		$display->panels['right'][] = $pane->pid;
+		*/
+
+	 	//$display->content[6]->panel = 'left';
+
+	 	//$display->content[6]->position = 1;
+
+		//$display->content[8]->panel = 'left';
+		//$display->content[8]->position = 0;
+
+		//delete content programatically
+		//unset($display->content[8]);
+
+		
+
+		//$display->layout = 'threecol_33_34_33';
+		panels_save_display($display);
+	}
+
+}
