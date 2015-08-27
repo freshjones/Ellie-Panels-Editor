@@ -50,8 +50,11 @@ function save_theme()
 	// Tasks have arrays of handlers which we refer to in Panels as 'variants';
 	$handlers = page_manager_load_sorted_handlers($task);
 
-	//unset the first option
-	array_shift($handlers);
+	//unset the blank option
+    if(isset($handlers['site_template__blank']))
+    {
+    	unset($handlers['site_template__blank']);
+    }
 
 	$keys = array_keys($handlers);
 
@@ -120,8 +123,11 @@ function get_themes()
 	// Tasks have arrays of handlers which we refer to in Panels as 'variants';
 	$handlers = page_manager_load_sorted_handlers($task);
 
-	//unset the first option
-	array_shift($handlers);
+	//unset the blank option
+    if(isset($handlers['site_template__blank']))
+    {
+    	unset($handlers['site_template__blank']);
+    }
 
 	$options = array();
 	foreach($handlers AS $theme)
