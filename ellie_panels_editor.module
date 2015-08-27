@@ -8,13 +8,41 @@ function ellie_panels_editor_menu()
       'type' => MENU_NORMAL_ITEM,
     );
 
+    $items['themeroller/themes'] = array(
+      'page callback' => 'get_themes',
+      'access arguments' => array('access content'),
+      'type' => MENU_CALLBACK,
+    );
+
+    $items['themeroller/colors'] = array(
+      'page callback' => 'get_colors',
+      'access arguments' => array('access content'),
+      'type' => MENU_CALLBACK,
+    );
+
+    $items['themeroller/save'] = array(
+      'page callback' => 'save_theme',
+      'access arguments' => array('access content'),
+      'type' => MENU_CALLBACK,
+    );
+
     return $items;
 }
 
-function test_me()
+
+function save_theme()
 {
-  	
-  	// The node template is managed by Page Manager as is known as a 'task';
+	
+	$postdata = file_get_contents("php://input");
+	$request = json_decode($postdata);
+
+	$theme_id	= $request->theme->id;
+	$color_id 	= $request->color->id;
+
+	$delimiter = stripos($theme_id, '-');    
+    $theme_key = trim(substr($theme_id, $delimiter+1));
+
+	// The node template is managed by Page Manager as is known as a 'task';
 	$task = page_manager_get_task('site_template');
 
 	ctools_get_plugins('page_manager', 'task_handlers', 'panel_context');
@@ -22,30 +50,176 @@ function test_me()
 	// Tasks have arrays of handlers which we refer to in Panels as 'variants';
 	$handlers = page_manager_load_sorted_handlers($task);
 
-	// Register layout and style themes on behalf of all of these items.
-	ctools_include('plugins', 'panels');
+	//unset the first option
+	array_shift($handlers);
 
-	$layouts = panels_get_layouts();
+	$keys = array_keys($handlers);
 
-	$defaultHandlers = variable_get('default_page_manager_handlers', false);
+	/* set a default template */
+	$disabledHandlers = array();
 
-	if($defaultHandlers)
+	foreach($keys AS $key)
 	{
-		foreach($defaultHandlers AS $key => $active)
+		
+		$delimiter = stripos($key, '-');
+
+		$suffix = trim(substr($key, $delimiter+1));
+
+		if($suffix != $theme_key)
 		{
-			$defaultHandlers[$key] = true;
+		  $disabledHandlers[$key] = TRUE;
 		}
+
 	}
 
-	$defaultHandlers['site_template__agency_one'] = false;
+	//turn off all non-relavant themes
+	variable_set('default_page_manager_handlers', $disabledHandlers );
 
-	variable_set('default_page_manager_handlers', $defaultHandlers);
+	$activeHandler = $handlers[$theme_id];
 
-	echo '<pre>';
-	print_r($defaultHandlers);
-	echo '</pre>';
-	die();
+	$activeHandler->conf['body_classes_to_add'] = 'site-theme-' . $theme_key . ' ' . 'color-scheme-' . $color_id;
+
+	page_manager_save_task_handler($activeHandler);
+
+	$ellieSettings = variable_get('ellie_settings', array());
+
+	$ellieSettings['active_theme_key']    = $theme_key;
+	$ellieSettings['active_theme_color']  = $color_id;
 	
+	//set some custom variable
+	variable_set('ellie_settings', $ellieSettings);
+
+	$return = array();
+	$return['status'] = 'success';
+
+	echo json_encode($return);
+
+}
+
+function get_colors()
+{
+	$colors = array();
+
+	$colors[] = array('id' => 'blue', 'title' => 'Blue/Purple', 'primary' => 'Blue', 'secondary' => 'Purple');
+	$colors[] = array('id' => 'purple', 'title' => 'Purple/Red', 'primary' => 'Purple', 'secondary' => 'Red');
+	$colors[] = array('id' => 'red', 'title' => 'Red/Orange', 'primary' => 'Red', 'secondary' => 'Orange');
+	$colors[] = array('id' => 'orange', 'title' => 'Orange/Green', 'primary' => 'Orange', 'secondary' => 'Green');
+	$colors[] = array('id' => 'green', 'title' => 'Green/Blue', 'primary' => 'Green', 'secondary' => 'Blue');
+
+	echo json_encode($colors);
+}
+
+function get_themes()
+{
+
+	// The node template is managed by Page Manager as is known as a 'task';
+	$task = page_manager_get_task('site_template');
+
+	ctools_get_plugins('page_manager', 'task_handlers', 'panel_context');
+
+	// Tasks have arrays of handlers which we refer to in Panels as 'variants';
+	$handlers = page_manager_load_sorted_handlers($task);
+
+	//unset the first option
+	array_shift($handlers);
+
+	$options = array();
+	foreach($handlers AS $theme)
+	{
+		$option = array();
+
+		$option['id'] = $theme->name;
+		$option['title'] = $theme->conf['title'];
+
+		$options[] = $option;
+	}
+
+	echo json_encode($options);
+}
+
+/*
+ Implementation of hook_libraries_info()
+ */
+function ellie_panels_editor_libraries_info() {
+    
+    $libraries['angular'] = array(
+        'name' => 'AngularJS',
+        'vendor url' => 'https://angularjs.org/',
+        'download url' => 'https://code.angularjs.org/1.4.4/',
+        'version' => '1.4.4',
+        'version arguments' => array(
+            'file' => 'angular.min.js',
+            'pattern' => '/.* v\((\d+\.\d+\.\d+)/',
+        ),
+        'files' => array(
+            'js' => array(
+                'angular.min.js',
+                'angular-resource.min.js',
+                'angular-ui-router.min.js',
+            ),
+        ),
+    );
+
+    return $libraries;
+
+}
+
+
+function test_me()
+{
+  	
+  	global $base_url;
+
+  	$module_path = drupal_get_path('module', 'ellie_panels_editor');
+
+	libraries_load('angular');
+
+	drupal_add_css($module_path . '/css/theme-roller.css');
+
+	drupal_add_js($module_path . '/javascript/theme_editor.js');
+
+	$settings = array();
+	$settings['template_path'] = base_path() . $module_path . '/templates/partials';
+	$settings['home_path'] = $base_url;
+
+	drupal_add_js(array('ellie' => $settings), 'setting');
+
+	//drupal_add_js();
+
+  	// The node template is managed by Page Manager as is known as a 'task';
+	//$task = page_manager_get_task('site_template');
+
+	//ctools_get_plugins('page_manager', 'task_handlers', 'panel_context');
+
+	// Tasks have arrays of handlers which we refer to in Panels as 'variants';
+	//$handlers = page_manager_load_sorted_handlers($task);
+
+	// Register layout and style themes on behalf of all of these items.
+	//ctools_include('plugins', 'panels');
+
+	//$layouts = panels_get_layouts();
+
+	//$defaultHandlers = variable_get('default_page_manager_handlers', false);
+
+	//if($defaultHandlers)
+	//{
+	//	foreach($defaultHandlers AS $key => $active)
+	//	{
+	//		$defaultHandlers[$key] = true;
+	//	}
+	//}
+
+	//$defaultHandlers['site_template__agency_one'] = false;
+
+	//variable_set('default_page_manager_handlers', $defaultHandlers);
+
+	$output = '';
+	$output .= '<div id="themeroller">';
+	$output .= '<div ui-view></div>';
+	$output .= '</div>';
+	
+	return $output;
+
 	/*
 	foreach ($handlers as $handler) {
 
@@ -63,11 +237,11 @@ function test_me()
   	}
   	*/
 
-	foreach ($handlers as $handler) 
-	{
+	//foreach ($handlers as $handler) 
+	//{
 		// Each handler/variant has an associate display in Panels which
 		// is the object we actually want to load and save.
-		$display = panels_panel_context_get_display($handler);
+		//$display = panels_panel_context_get_display($handler);
 
 		/*
 		$pane = panels_new_pane('page_logo', 'page_logo', TRUE);
@@ -94,7 +268,12 @@ function test_me()
 		
 
 		//$display->layout = 'threecol_33_34_33';
-		panels_save_display($display);
-	}
+
+
+		//panels_save_display($display);
+	//}
 
 }
+
+
+

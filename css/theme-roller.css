@@ -1,0 +1,23 @@
+.theme-roller .color-options > div
+{
+	display:inline-block;
+	margin:0 20px;
+}
+
+.theme-roller .color-options .title
+{
+	text-align:center;
+	font-size:140%;
+}
+
+.theme-roller .swatches
+{
+	text-align: center;
+}
+
+.theme-roller .swatch
+{
+	display:inline-block;
+	width:60px;
+	height:30px;
+}
